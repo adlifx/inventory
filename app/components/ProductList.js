@@ -1,5 +1,5 @@
-// src/components/ProductList.js
-
+'use client'; // Add this line at the very top
+// src/components/ProductForm.js
 import { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
