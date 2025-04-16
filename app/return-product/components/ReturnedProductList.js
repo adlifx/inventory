@@ -21,6 +21,7 @@ export default function ReturnedProductList() {
             } catch (e) {
                 console.error('Error fetching returned products:', e);
                 fetchReturnedProducts();
+                setLoading(false);
             }
         };
 
