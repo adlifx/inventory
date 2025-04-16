@@ -50,9 +50,14 @@ export default function ReturnedProductList() {
             ) : (
                 <ul className="list-disc pl-5">
                     {returnedProducts.map(product => (
-                        <li key={product.id} className="mb-2" style={{ color: 'black' }}>
-                            <strong>{product.productName}:</strong> {product.serialNumbers.join(', ')} (Returned on:{' '}
-                            {new Date(product.returnedAt?.seconds * 1000).toLocaleString()}
+                        <li key={product.id} className="mb-3" style={{ color: 'black' }}>
+                            <strong className="block">{product.productName}</strong>
+                            <span className="block">
+                                Serial Numbers: {product.serialNumbers.join(', ')}
+                            </span>
+                            <span className="block text-gray-600">
+                                Returned on: {new Date(product.returnedAt?.seconds * 1000).toLocaleString()}
+                            </span>
                         </li>
                     ))}
                 </ul>
