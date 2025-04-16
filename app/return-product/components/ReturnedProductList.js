@@ -43,24 +43,33 @@ export default function ReturnedProductList() {
     }
 
     return (
-        <div className="mt-8">
-            <h2 className="text-xl font-semibold mb-4" style={{ color: 'black' }}>Returned Product Records</h2>
+        <div className="mt-8 text-black"> {/* Ensure text is black for better visibility on a potentially light background */}
+            <h2 className="text-xl font-semibold mb-4">Returned Product Records</h2>
             {returnedProducts.length === 0 ? (
                 <p>No returned products recorded yet.</p>
             ) : (
-                <ul className="list-disc pl-5">
-                    {returnedProducts.map(product => (
-                        <li key={product.id} className="mb-3" style={{ color: 'black' }}>
-                            <strong className="block">{product.productName}</strong>
-                            <span className="block">
-                                Serial Numbers: {product.serialNumbers.join(', ')}
-                            </span>
-                            <span className="block text-gray-600">
-                                Returned on: {new Date(product.returnedAt?.seconds * 1000).toLocaleString()}
-                            </span>
-                        </li>
-                    ))}
-                </ul>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full bg-white border rounded shadow-md">
+                        <thead className="bg-gray-100">
+                            <tr>
+                                <th className="py-2 px-4 border-b font-semibold text-left">Product Name</th>
+                                <th className="py-2 px-4 border-b font-semibold text-left">Serial Numbers</th>
+                                <th className="py-2 px-4 border-b font-semibold text-left">Returned On</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {returnedProducts.map(product => (
+                                <tr key={product.id} className="hover:bg-gray-50">
+                                    <td className="py-2 px-4 border-b">{product.productName}</td>
+                                    <td className="py-2 px-4 border-b">{product.serialNumbers.join(', ')}</td>
+                                    <td className="py-2 px-4 border-b">
+                                        {new Date(product.returnedAt?.seconds * 1000).toLocaleString()}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             )}
         </div>
     );
