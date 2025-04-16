@@ -1,8 +1,9 @@
+// src/app/page.js
 'use client';
 
-import { useState, useCallback } from 'react';
-import ProductForm from './components/ProductForm';
+// import ProductForm from './components/ProductForm';
 import ProductList from './components/ProductList';
+import { useState, useCallback } from 'react';
 
 export default function Home() {
   const [refreshList, setRefreshList] = useState(false);
@@ -14,7 +15,7 @@ export default function Home() {
   return (
     <main className="container mx-auto py-8 px-4">
       <h1 className="text-3xl font-bold text-center mb-8">Product Inventory System</h1>
-      <ProductForm onProductAdded={handleProductAdded} />
+      {/* <ProductForm onProductAdded={handleProductAdded} /> */}
       <ProductList refresh={refreshList} />
     </main>
   );
