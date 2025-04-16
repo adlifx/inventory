@@ -36,7 +36,7 @@ export default function ReturnedProductList() {
     }, []);
 
     if (loading) {
-        return <p className="text-black">Loading returned product records...</p>;
+        return <p className="text-white">Loading returned product records...</p>;
     }
 
     if (error) {
@@ -44,28 +44,28 @@ export default function ReturnedProductList() {
     }
 
     return (
-        <div className="mt-8 text-black">
+        <div className="mt-8 text-white"> {/* Changed text-black to text-white here */}
             <h2 className="text-xl font-semibold mb-4">Returned Product Records</h2>
             {returnedProducts.length === 0 ? (
                 <p>No returned products recorded yet.</p>
             ) : (
                 <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white border rounded shadow-md">
-                        <thead className="bg-gray-100">
+                    <table className="min-w-full bg-gray-800 border rounded shadow-md"> {/* Using a dark background for the table */}
+                        <thead className="bg-gray-700">
                             <tr>
-                                <th className="py-2 px-4 border-b font-semibold text-left">Product Name</th>
-                                <th className="py-2 px-4 border-b font-semibold text-left">Quantity</th>
-                                <th className="py-2 px-4 border-b font-semibold text-left">Serial Numbers</th>
-                                <th className="py-2 px-4 border-b font-semibold text-left">Returned On</th>
+                                <th className="py-2 px-4 border-b font-semibold text-left text-white">Product Name</th>
+                                <th className="py-2 px-4 border-b font-semibold text-left text-white">Quantity</th>
+                                <th className="py-2 px-4 border-b font-semibold text-left text-white">Serial Numbers</th>
+                                <th className="py-2 px-4 border-b font-semibold text-left text-white">Returned On</th>
                             </tr>
                         </thead>
                         <tbody>
                             {returnedProducts.map(product => (
-                                <tr key={product.id} className="hover:bg-gray-50">
-                                    <td className="py-2 px-4 border-b">{product.productName}</td>
-                                    <td className="py-2 px-4 border-b">{product.serialNumbers.length}</td> {/* Display Quantity */}
-                                    <td className="py-2 px-4 border-b">{product.serialNumbers.join(', ')}</td>
-                                    <td className="py-2 px-4 border-b">
+                                <tr key={product.id} className="hover:bg-gray-600">
+                                    <td className="py-2 px-4 border-b text-white">{product.productName}</td>
+                                    <td className="py-2 px-4 border-b text-white">{product.serialNumbers.length}</td>
+                                    <td className="py-2 px-4 border-b text-white">{product.serialNumbers.join(', ')}</td>
+                                    <td className="py-2 px-4 border-b text-white">
                                         {new Date(product.returnedAt?.seconds * 1000).toLocaleString()}
                                     </td>
                                 </tr>
