@@ -1,8 +1,8 @@
-// src/app/page.js
+// src/app/page.tsx (or .js)
 'use client';
 
 import ProductForm from './components/ProductForm';
-import ProductList from './components/ProductList';
+import ProductList from './components/ProductList'; // Make sure this import exists
 import { useState, useCallback } from 'react';
 
 export default function Home() {
@@ -16,7 +16,7 @@ export default function Home() {
     <main className="container mx-auto py-8 px-4">
       <h1 className="text-3xl font-bold text-center mb-8">Product Inventory System</h1>
       <ProductForm onProductAdded={handleProductAdded} />
-      {/* <ProductList refresh={refreshList} /> */}
+      <ProductList refresh={refreshList} /> {/* Make sure this line is present */}
     </main>
   );
 }
