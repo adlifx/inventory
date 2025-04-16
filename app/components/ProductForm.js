@@ -46,7 +46,7 @@ export default function ProductForm() {
   };
 
   return (
-    <div className="max-w-md mx-auto p-4 bg-white rounded shadow">
+    <div className="max-w-md mx-auto p-4 rounded shadow" style={{ backgroundColor: 'white', color: 'black' }}>
       <h2 className="text-xl font-semibold mb-4">Add New Product</h2>
       
       {message && (
