@@ -1,4 +1,3 @@
-// src/app/page.js
 'use client'; // Add this line at the very top
 
 import { useState, useCallback } from 'react';
