@@ -1,5 +1,6 @@
+'use client'; // Add this line at the very top
 // src/components/ProductForm.js
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // Make sure useEffect is imported
 import { db } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp, getDocs, query, where, updateDoc, increment, arrayUnion } from 'firebase/firestore';
 
