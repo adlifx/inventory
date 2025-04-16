@@ -2,8 +2,8 @@
 'use client';
 
 import { useState } from 'react';
-import ProductForm from '../components/ProductForm';
-import ProductList from '../components/ProductList';
+import ProductForm from './components/ProductForm';
+import ProductList from './components/ProductList';
 
 export default function Home() {
   return (
