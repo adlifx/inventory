@@ -1,9 +1,9 @@
 // src/components/ProductForm.js
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
 
-export default function ProductForm() {
+export default function ProductForm({ onProductAdded }) {
   const [name, setName] = useState('');
   const [serialNumbersType, setSerialNumbersType] = useState('manual'); // 'manual' or 'series'
   const [manualSerialNumbers, setManualSerialNumbers] = useState('');
@@ -12,6 +12,23 @@ export default function ProductForm() {
   const [quantity, setQuantity] = useState(0);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [existingSerialNumbers, setExistingSerialNumbers] = useState([]);
+
+  useEffect(() => {
+    const fetchExistingSerials = async () => {
+      const querySnapshot = await getDocs(collection(db, 'products'));
+      const allSerials = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.serialNumbers && Array.isArray(data.serialNumbers)) {
+          allSerials.push(...data.serialNumbers);
+        }
+      });
+      setExistingSerialNumbers(allSerials);
+    };
+
+    fetchExistingSerials();
+  }, []);
 
   const handleSerialNumbersTypeChange = (e) => {
     setSerialNumbersType(e.target.value);
@@ -51,6 +68,8 @@ export default function ProductForm() {
     }
   };
 
+  const isSerialNumberTaken = (serial) => existingSerialNumbers.includes(serial);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -78,22 +97,46 @@ export default function ProductForm() {
       return;
     }
 
-    try {
-      await addDoc(collection(db, 'products'), {
-        name,
-        serialNumbers: uniqueSerialNumbers,
-        quantity: finalQuantity,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
+    const duplicateSerials = uniqueSerialNumbers.filter(isSerialNumberTaken);
+    if (duplicateSerials.length > 0) {
+      setMessage(`Error: Serial number(s) already exist: ${duplicateSerials.join(', ')}`);
+      setLoading(false);
+      return;
+    }
 
-      setMessage('Product added successfully!');
-      setName('');
-      setManualSerialNumbers('');
-      setStartSerialNumber('');
-      setEndSerialNumber('');
-      setQuantity(0);
-      setSerialNumbersType('manual'); // Reset to default
+    try {
+      const productsRef = collection(db, 'products');
+      const existingProductQuery = query(productsRef, where('name', '==', name));
+      const existingProductSnapshot = await getDocs(existingProductQuery);
+
+      if (!existingProductSnapshot.empty) {
+        const existingProductDoc = existingProductSnapshot.docs[0].ref;
+        // You might want to update the existing document instead of adding a new one
+        // await updateDoc(existingProductDoc, {
+        //   serialNumbers: arrayUnion(...uniqueSerialNumbers),
+        //   quantity: increment(finalQuantity),
+        //   updatedAt: serverTimestamp()
+        // });
+        setMessage('Warning: Product with this name already exists. Consider updating instead.');
+      } else {
+        await addDoc(productsRef, {
+          name,
+          serialNumbers: uniqueSerialNumbers,
+          quantity: finalQuantity,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+        setMessage('Product added successfully!');
+        if (onProductAdded) {
+          onProductAdded(); // Notify the parent component to refresh the list
+        }
+        setName('');
+        setManualSerialNumbers('');
+        setStartSerialNumber('');
+        setEndSerialNumber('');
+        setQuantity(0);
+        setSerialNumbersType('manual'); // Reset to default
+      }
     } catch (error) {
       console.error('Error adding product:', error);
       setMessage(`Error: ${error.message}`);
@@ -114,7 +157,7 @@ export default function ProductForm() {
       {message && (
         <div
           className={`p-2 mb-4 rounded ${
-            message.includes('Error') ? 'bg-red-100 text-black' : 'bg-green-100 text-black'
+            message.includes('Error') ? 'bg-red-100 text-black' : 'bg-yellow-100 text-black' // Changed to yellow for warning
           }`}
         >
           {message}
