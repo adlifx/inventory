@@ -1,4 +1,3 @@
-'use client';
 // src/components/ProductForm.js
 import { useState } from 'react';
 import { db } from '../lib/firebase';
