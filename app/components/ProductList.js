@@ -1,15 +1,18 @@
 // src/components/ProductList.js
+'use client'; // Mark this component as a Client Component
+
 import { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
-import { collection, query, orderBy, onSnapshot, where, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 
-export default function ProductList() {
+export default function ProductList({ refresh }) { // Receive the refresh prop
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [totalQuantity, setTotalQuantity] = useState(0);
 
   useEffect(() => {
+    setLoading(true); // Set loading to true on every refresh
     const q = query(
       collection(db, 'products'),
       orderBy('createdAt', 'desc')
@@ -40,7 +43,7 @@ export default function ProductList() {
     );
 
     return () => unsubscribe();
-  }, []);
+  }, [refresh]); // Re-run the effect when the refresh prop changes
 
   useEffect(() => {
     const calculateTotalQuantity = () => {
@@ -92,36 +95,7 @@ export default function ProductList() {
       <h2 className="text-xl font-semibold mb-4">Product Inventory</h2>
       <p className="mb-2">Total Quantity: <span className="font-bold">{totalQuantity}</span></p>
 
-      {products.length === 0 ? (
-        <p className="text-gray-500">No products added yet.</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white border text-black">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="py-2 px-4 border text-left">Name</th>
-                <th className="py-2 px-4 border text-left">Quantity</th>
-                <th className="py-2 px-4 border text-left">Serial Numbers</th>
-                <th className="py-2 px-4 border text-left">Added On</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map(product => (
-                <tr key={product.id} className="hover:bg-gray-50">
-                  <td className="py-2 px-4 border">{product.name}</td>
-                  <td className="py-2 px-4 border">{product.quantity}</td>
-                  <td className="py-2 px-4 border">
-                    <div className="max-h-24 overflow-y-auto">
-                      {product.serialNumbersDisplay}
-                    </div>
-                  </td>
-                  <td className="py-2 px-4 border">{product.createdAt}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {/* ... (your existing table rendering logic) */}
     </div>
   );
 }
