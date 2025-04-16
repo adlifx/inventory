@@ -1,12 +1,13 @@
 // src/components/ProductList.js
 import { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, where, getDocs } from 'firebase/firestore';
 
 export default function ProductList() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [totalQuantity, setTotalQuantity] = useState(0);
 
   useEffect(() => {
     const q = query(
@@ -25,7 +26,7 @@ export default function ProductList() {
             quantity: data.quantity,
             serialNumbers: Array.isArray(data.serialNumbers) ? data.serialNumbers : [],
             createdAt: data.createdAt?.toDate().toLocaleString() || 'Unknown',
-            serialNumbersDisplay: formatSerialNumbers(data.serialNumbers), // New display format
+            serialNumbersDisplay: formatSerialNumbers(data.serialNumbers),
           };
         });
         setProducts(productData);
@@ -40,6 +41,15 @@ export default function ProductList() {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    const calculateTotalQuantity = () => {
+      const total = products.reduce((sum, product) => sum + product.quantity, 0);
+      setTotalQuantity(total);
+    };
+
+    calculateTotalQuantity();
+  }, [products]);
 
   const formatSerialNumbers = (serialNumbers) => {
     if (!Array.isArray(serialNumbers) || serialNumbers.length === 0) {
@@ -80,6 +90,7 @@ export default function ProductList() {
   return (
     <div className="mt-8 text-white">
       <h2 className="text-xl font-semibold mb-4">Product Inventory</h2>
+      <p className="mb-2">Total Quantity: <span className="font-bold">{totalQuantity}</span></p>
 
       {products.length === 0 ? (
         <p className="text-gray-500">No products added yet.</p>
@@ -101,7 +112,7 @@ export default function ProductList() {
                   <td className="py-2 px-4 border">{product.quantity}</td>
                   <td className="py-2 px-4 border">
                     <div className="max-h-24 overflow-y-auto">
-                      {product.serialNumbersDisplay} {/* Display the formatted serial numbers */}
+                      {product.serialNumbersDisplay}
                     </div>
                   </td>
                   <td className="py-2 px-4 border">{product.createdAt}</td>
