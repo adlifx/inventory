@@ -9,7 +9,7 @@ export default function ProductList({ refresh }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [totalQuantity, setTotalQuantity] = useState(0);
+  const [productQuantities, setProductQuantities] = useState({});
 
   useEffect(() => {
     setLoading(true);
@@ -46,12 +46,15 @@ export default function ProductList({ refresh }) {
   }, [refresh]);
 
   useEffect(() => {
-    const calculateTotalQuantity = () => {
-      const total = products.reduce((sum, product) => sum + product.quantity, 0);
-      setTotalQuantity(total);
+    const calculateTotalQuantities = () => {
+      const quantities = {};
+      products.forEach(product => {
+        quantities[product.name] = (quantities[product.name] || 0) + product.quantity;
+      });
+      setProductQuantities(quantities);
     };
 
-    calculateTotalQuantity();
+    calculateTotalQuantities();
   }, [products]);
 
   const formatSerialNumbers = (serialNumbers) => {
@@ -93,47 +96,43 @@ export default function ProductList({ refresh }) {
   return (
     <div className="mt-8 text-white">
       <h2 className="text-xl font-semibold mb-4">Product Inventory</h2>
-      <p className="mb-2">Total Quantity: <span className="font-bold">{totalQuantity}</span></p>
 
-      {products.length === 0 ? (
-        <p className="text-gray-500">No products added yet.</p>
-      ) : (
-        <div>
-          <h3 className="text-lg font-semibold mb-2">Product Breakdown:</h3>
-          <ul>
-            {products.map(product => (
-              <li key={product.id} className="mb-1">
-                <span className="font-semibold">{product.name}:</span> {product.quantity}
-              </li>
-            ))}
-          </ul>
+      <h3 className="text-lg font-semibold mb-2">Total Quantity by Product:</h3>
+      <ul>
+        {Object.entries(productQuantities).map(([name, total]) => (
+          <li key={name} className="mb-1">
+            <span className="font-semibold">{name}:</span> {total}
+          </li>
+        ))}
+      </ul>
 
-          <div className="overflow-x-auto mt-4">
-            <table className="min-w-full bg-white border text-black">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="py-2 px-4 border text-left">Name</th>
-                  <th className="py-2 px-4 border text-left">Quantity</th>
-                  <th className="py-2 px-4 border text-left">Serial Numbers</th>
-                  <th className="py-2 px-4 border text-left">Added On</th>
+      {products.length > 0 && (
+        <div className="overflow-x-auto mt-4">
+          <h3 className="text-lg font-semibold mb-2">All Products:</h3>
+          <table className="min-w-full bg-white border text-black">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="py-2 px-4 border text-left">Name</th>
+                <th className="py-2 px-4 border text-left">Quantity</th>
+                <th className="py-2 px-4 border text-left">Serial Numbers</th>
+                <th className="py-2 px-4 border text-left">Added On</th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.map(product => (
+                <tr key={product.id} className="hover:bg-gray-50">
+                  <td className="py-2 px-4 border">{product.name}</td>
+                  <td className="py-2 px-4 border">{product.quantity}</td>
+                  <td className="py-2 px-4 border">
+                    <div className="max-h-24 overflow-y-auto">
+                      {product.serialNumbersDisplay}
+                    </div>
+                  </td>
+                  <td className="py-2 px-4 border">{product.createdAt}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {products.map(product => (
-                  <tr key={product.id} className="hover:bg-gray-50">
-                    <td className="py-2 px-4 border">{product.name}</td>
-                    <td className="py-2 px-4 border">{product.quantity}</td>
-                    <td className="py-2 px-4 border">
-                      <div className="max-h-24 overflow-y-auto">
-                        {product.serialNumbersDisplay}
-                      </div>
-                    </td>
-                    <td className="py-2 px-4 border">{product.createdAt}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
