@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
-import { collection, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 
 export default function ReturnedProductList() {
     const [returnedProducts, setReturnedProducts] = useState([]);
@@ -11,21 +11,27 @@ export default function ReturnedProductList() {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        const fetchReturnedProducts = async () => {
-            try {
-                const returnedProductsRef = collection(db, 'returnedProducts');
-                const snapshot = await getDocs(orderBy(returnedProductsRef, 'returnedAt', 'desc'));
-                const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                setReturnedProducts(data);
+        setLoading(true);
+        const q = query(
+            collection(db, 'returnedProducts'),
+            orderBy('returnedAt', 'desc')
+        );
+
+        const unsubscribe = onSnapshot(
+            q,
+            (snapshot) => {
+                const productData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setReturnedProducts(productData);
                 setLoading(false);
-            } catch (e) {
-                console.error('Error fetching returned products:', e);
+            },
+            (err) => {
+                console.error('Error fetching returned products:', err);
                 setError('Failed to load returned products.');
                 setLoading(false);
             }
-        };
+        );
 
-        fetchReturnedProducts();
+        return () => unsubscribe();
     }, []);
 
     if (loading) {
