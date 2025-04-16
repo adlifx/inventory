@@ -96,7 +96,12 @@ export default function ReturnedProductList() {
 
     return (
         <div className="mt-8 text-white">
-            <h2 className="text-xl font-semibold mb-4">Returned Product Records</h2>
+            <div className="mb-4 flex justify-between items-center"> {/* Flex container for title and button */}
+                <h2 className="text-xl font-semibold">Returned Product Records</h2>
+                <Link href="/" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                    Go Back to Add Product
+                </Link>
+            </div>
 
             <div className="mb-4 flex items-center space-x-4">
                 <div>
@@ -148,11 +153,7 @@ export default function ReturnedProductList() {
                 </div>
             )}
 
-            <div className="mt-6">
-                <Link href="/" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                    Go Back to Add Product
-                </Link>
-            </div>
+            {/* Removed the button from the bottom */}
         </div>
     );
 }
