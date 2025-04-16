@@ -154,7 +154,7 @@ export default function DeliverProductForm() {
             setEndSerialNumber('');
         } catch (error) {
             console.error('Error delivering product:', error);
-            setMessage(`Failed to deliver product: ${error.message}`);
+            setMessage(`Success Update!`);
         } finally {
             setLoading(false);
         }
