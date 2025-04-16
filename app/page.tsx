@@ -4,6 +4,7 @@
 import ProductForm from './components/ProductForm';
 import ProductList from './components/ProductList';
 import DeliverProductForm from './components/DeliverProductForm';
+import Link from 'next/link'; // Import the Link component
 import { useState, useCallback } from 'react';
 
 export default function Home() {
@@ -46,6 +47,12 @@ export default function Home() {
             )}
 
             <ProductList refresh={refreshList} />
+
+            <div className="mt-8 text-center">
+                <Link href="/return-product" className="bg-red-500 text-white p-2 rounded hover:bg-red-600">
+                    Go to Return Product Page
+                </Link>
+            </div>
         </main>
     );
 }
