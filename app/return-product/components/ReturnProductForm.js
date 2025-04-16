@@ -7,7 +7,10 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function ReturnProductForm() {
     const [productName, setProductName] = useState('');
-    const [serialNumbers, setSerialNumbers] = useState('');
+    const [serialNumbersType, setSerialNumbersType] = useState('manual'); // 'manual' or 'series'
+    const [manualSerialNumbers, setManualSerialNumbers] = useState('');
+    const [startSerialNumber, setStartSerialNumber] = useState('');
+    const [endSerialNumber, setEndSerialNumber] = useState('');
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -15,8 +18,23 @@ export default function ReturnProductForm() {
         setProductName(e.target.value);
     };
 
-    const handleSerialNumbersChange = (e) => {
-        setSerialNumbers(e.target.value);
+    const handleSerialNumbersTypeChange = (e) => {
+        setSerialNumbersType(e.target.value);
+        setManualSerialNumbers('');
+        setStartSerialNumber('');
+        setEndSerialNumber('');
+    };
+
+    const handleManualSerialNumbersChange = (e) => {
+        setManualSerialNumbers(e.target.value);
+    };
+
+    const handleStartSerialNumberChange = (e) => {
+        setStartSerialNumber(e.target.value);
+    };
+
+    const handleEndSerialNumberChange = (e) => {
+        setEndSerialNumber(e.target.value);
     };
 
     const handleReturnProduct = async (e) => {
@@ -24,7 +42,18 @@ export default function ReturnProductForm() {
         setLoading(true);
         setMessage('');
 
-        const serialNumbersArray = serialNumbers.split(',').map(sn => sn.trim()).filter(sn => sn !== '');
+        let serialNumbersArray = [];
+        if (serialNumbersType === 'manual') {
+            serialNumbersArray = manualSerialNumbers.split(',').map(sn => sn.trim()).filter(sn => sn !== '');
+        } else if (serialNumbersType === 'series' && startSerialNumber && endSerialNumber) {
+            const startNum = parseInt(startSerialNumber, 10);
+            const endNum = parseInt(endSerialNumber, 10);
+            if (!isNaN(startNum) && !isNaN(endNum) && endNum >= startNum) {
+                for (let i = startNum; i <= endNum; i++) {
+                    serialNumbersArray.push(i.toString());
+                }
+            }
+        }
 
         if (!productName || serialNumbersArray.length === 0) {
             setMessage('Please enter the product name and at least one serial number.');
@@ -43,7 +72,10 @@ export default function ReturnProductForm() {
 
             setMessage(`Successfully recorded return for ${serialNumbersArray.length} units of ${productName} (Serial Numbers: ${serialNumbersArray.join(', ')})`);
             setProductName('');
-            setSerialNumbers('');
+            setSerialNumbersType('manual');
+            setManualSerialNumbers('');
+            setStartSerialNumber('');
+            setEndSerialNumber('');
         } catch (error) {
             console.error('Error recording returned product:', error);
             setMessage(`Failed to record return: ${error.message}`);
@@ -74,20 +106,70 @@ export default function ReturnProductForm() {
                         required
                     />
                 </div>
+
                 <div className="mb-4">
                     <label className="block text-sm font-medium mb-1" style={{ color: 'black' }}>
-                        Serial Number(s) (comma-separated)
+                        Serial Number Entry Type
                     </label>
-                    <textarea
-                        value={serialNumbers}
-                        onChange={handleSerialNumbersChange}
+                    <select
+                        value={serialNumbersType}
+                        onChange={handleSerialNumbersTypeChange}
                         className="w-full p-2 border rounded text-black"
-                        rows="3"
-                        placeholder="SN001, SN007, SN011..."
                         style={{ backgroundColor: 'white', color: 'black' }}
-                        required
-                    />
+                    >
+                        <option value="manual">Manual Entry (comma-separated)</option>
+                        <option value="series">Number Series (Start - End)</option>
+                    </select>
                 </div>
+
+                {serialNumbersType === 'manual' && (
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium mb-1" style={{ color: 'black' }}>
+                            Serial Number(s)
+                        </label>
+                        <textarea
+                            value={manualSerialNumbers}
+                            onChange={handleManualSerialNumbersChange}
+                            className="w-full p-2 border rounded text-black"
+                            rows="3"
+                            placeholder="SN001, SN007, SN011..."
+                            style={{ backgroundColor: 'white', color: 'black' }}
+                            required
+                        />
+                    </div>
+                )}
+
+                {serialNumbersType === 'series' && (
+                    <div className="mb-4">
+                        <div className="flex space-x-2">
+                            <div className="w-1/2">
+                                <label className="block text-sm font-medium mb-1" style={{ color: 'black' }}>
+                                    Start Number
+                                </label>
+                                <input
+                                    type="number"
+                                    value={startSerialNumber}
+                                    onChange={handleStartSerialNumberChange}
+                                    className="w-full p-2 border rounded text-black"
+                                    style={{ backgroundColor: 'white', color: 'black' }}
+                                />
+                            </div>
+                            <div className="w-1/2">
+                                <label className="block text-sm font-medium mb-1" style={{ color: 'black' }}>
+                                    End Number
+                                </label>
+                                <input
+                                    type="number"
+                                    value={endSerialNumber}
+                                    onChange={handleEndSerialNumberChange}
+                                    className="w-full p-2 border rounded text-black"
+                                    style={{ backgroundColor: 'white', color: 'black' }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <button
                     type="submit"
                     disabled={loading}
