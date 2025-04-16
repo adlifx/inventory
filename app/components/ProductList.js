@@ -36,18 +36,18 @@ export default function ProductList() {
     return () => unsubscribe();
   }, []);
 
-  if (loading) return <div className="text-center p-4">Loading products...</div>;
-  if (error) return <div className="text-red-500 p-4">{error}</div>;
+  if (loading) return <div className="text-center p-4 text-white">Loading products...</div>;
+  if (error) return <div className="text-red-500 p-4">Error: {error}</div>;
 
   return (
-    <div className="mt-8">
+    <div className="mt-8 text-white"> {/* Set default text color to white */}
       <h2 className="text-xl font-semibold mb-4">Product Inventory</h2>
-      
+
       {products.length === 0 ? (
         <p className="text-gray-500">No products added yet.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full bg-white border">
+          <table className="min-w-full bg-white border text-black"> {/* White background for table, black text */}
             <thead>
               <tr className="bg-gray-100">
                 <th className="py-2 px-4 border text-left">Name</th>
