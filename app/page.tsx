@@ -2,7 +2,7 @@
 'use client';
 
 import ProductForm from './components/ProductForm';
-// import ProductList from './components/ProductList';
+import ProductList from './components/ProductList';
 import { useState, useCallback } from 'react';
 
 export default function Home() {
