@@ -41,6 +41,13 @@ export default function ProductForm({ onProductAdded }) {
     setMessage(''); // Clear previous messages
   }, [serialNumbersType, manualSerialNumbers, startSerialNumber, endSerialNumber]);
 
+  useEffect(() => {
+    if (serialNumbersType === 'series') {
+      console.log('useEffect - startSerialNumber:', startSerialNumber, 'endSerialNumber:', endSerialNumber);
+      calculateQuantityFromSeries(startSerialNumber, endSerialNumber);
+    }
+  }, [startSerialNumber, endSerialNumber, serialNumbersType]);
+
   const handleSerialNumbersTypeChange = (e) => {
     setSerialNumbersType(e.target.value);
     setManualSerialNumbers('');
@@ -58,15 +65,13 @@ export default function ProductForm({ onProductAdded }) {
   const handleStartSerialNumberChange = (e) => {
     const newValue = e.target.value;
     setStartSerialNumber(newValue);
-    console.log('handleStartSerialNumberChange - newValue:', newValue, 'endSerialNumber:', endSerialNumber);
-    calculateQuantityFromSeries(newValue, endSerialNumber);
+    console.log('handleStartSerialNumberChange - newValue:', newValue);
   };
 
   const handleEndSerialNumberChange = (e) => {
     const newValue = e.target.value;
     setEndSerialNumber(newValue);
-    console.log('handleEndSerialNumberChange - startSerialNumber:', startSerialNumber, 'newValue:', newValue);
-    calculateQuantityFromSeries(startSerialNumber, newValue);
+    console.log('handleEndSerialNumberChange - newValue:', newValue);
   };
 
   const calculateQuantityFromSeries = (start, end) => {
