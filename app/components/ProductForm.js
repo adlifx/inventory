@@ -1,9 +1,7 @@
-'use client';
-
 // src/components/ProductForm.js
-import { useState, useEffect } from 'react'; // <--- ADD useEffect HERE
+import { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp, getDocs, query, where, updateDoc, increment, arrayUnion } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
 
 export default function ProductForm({ onProductAdded }) {
   const [name, setName] = useState('');
@@ -18,29 +16,19 @@ export default function ProductForm({ onProductAdded }) {
 
   useEffect(() => {
     const fetchExistingSerials = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'products'));
-        const allSerials = [];
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          if (data.serialNumbers && Array.isArray(data.serialNumbers)) {
-            allSerials.push(...data.serialNumbers);
-          }
-        });
-        setExistingSerialNumbers(allSerials);
-      } catch (error) {
-        console.error('Error fetching existing serial numbers:', error);
-        setMessage(`Error fetching existing serials: ${error.message}`);
-      }
+      const querySnapshot = await getDocs(collection(db, 'products'));
+      const allSerials = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.serialNumbers && Array.isArray(data.serialNumbers)) {
+          allSerials.push(...data.serialNumbers);
+        }
+      });
+      setExistingSerialNumbers(allSerials);
     };
 
     fetchExistingSerials();
   }, []);
-
-  useEffect(() => {
-    setQuantity(0); // Reset quantity when entry type or serials change
-    setMessage(''); // Clear previous messages
-  }, [serialNumbersType, manualSerialNumbers, startSerialNumber, endSerialNumber]);
 
   const handleSerialNumbersTypeChange = (e) => {
     setSerialNumbersType(e.target.value);
@@ -123,12 +111,13 @@ export default function ProductForm({ onProductAdded }) {
 
       if (!existingProductSnapshot.empty) {
         const existingProductDoc = existingProductSnapshot.docs[0].ref;
-        await updateDoc(existingProductDoc, {
-          serialNumbers: arrayUnion(...uniqueSerialNumbers),
-          quantity: increment(finalQuantity),
-          updatedAt: serverTimestamp()
-        });
-        setMessage(`Quantity updated for product "${name}".`);
+        // You might want to update the existing document instead of adding a new one
+        // await updateDoc(existingProductDoc, {
+        //   serialNumbers: arrayUnion(...uniqueSerialNumbers),
+        //   quantity: increment(finalQuantity),
+        //   updatedAt: serverTimestamp()
+        // });
+        setMessage('Warning: Product with this name already exists. Consider updating instead.');
       } else {
         await addDoc(productsRef, {
           name,
@@ -138,19 +127,18 @@ export default function ProductForm({ onProductAdded }) {
           updatedAt: serverTimestamp()
         });
         setMessage('Product added successfully!');
+        if (onProductAdded) {
+          onProductAdded(); // Notify the parent component to refresh the list
+        }
+        setName('');
+        setManualSerialNumbers('');
+        setStartSerialNumber('');
+        setEndSerialNumber('');
+        setQuantity(0);
+        setSerialNumbersType('manual'); // Reset to default
       }
-
-      if (onProductAdded) {
-        onProductAdded(); // Notify the parent component to refresh the list
-      }
-      setName('');
-      setManualSerialNumbers('');
-      setStartSerialNumber('');
-      setEndSerialNumber('');
-      setQuantity(0);
-      setSerialNumbersType('manual'); // Reset to default
     } catch (error) {
-      console.error('Error adding/updating product:', error);
+      console.error('Error adding product:', error);
       setMessage(`Error: ${error.message}`);
     } finally {
       setLoading(false);
@@ -169,7 +157,7 @@ export default function ProductForm({ onProductAdded }) {
       {message && (
         <div
           className={`p-2 mb-4 rounded ${
-            message.includes('Error') ? 'bg-red-100 text-black' : 'bg-yellow-100 text-black'
+            message.includes('Error') ? 'bg-red-100 text-black' : 'bg-yellow-100 text-black' // Changed to yellow for warning
           }`}
         >
           {message}
