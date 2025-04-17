@@ -1,50 +1,58 @@
-// app/page.tsx
-
+// src/app/page.tsx
 'use client';
 
-import { useState } from 'react';
 import ProductForm from './components/ProductForm';
 import ProductList from './components/ProductList';
+import DeliverProductForm from './components/DeliverProductForm';
+import Link from 'next/link'; // Import the Link component
+import { useState, useCallback } from 'react';
 
-export default function HomePage() {
-  const [productsUpdated, setProductsUpdated] = useState(false);
-  const [activeTab, setActiveTab] = useState<'add' | 'list'>('list');
+export default function Home() {
+    const [activeTab, setActiveTab] = useState('add');
+    const [refreshList, setRefreshList] = useState(false);
 
-  const handleProductAdded = () => {
-    setProductsUpdated(prev => !prev);
-    setActiveTab('list');
-  };
+    const handleProductAdded = useCallback(() => {
+        setRefreshList((prev) => !prev);
+    }, []);
 
-  return (
-    <div className="p-4">
-      <h1 className="text-2xl font-semibold mb-4">Product Management</h1>
+    return (
+        <main className="container mx-auto py-8 px-4">
+            <h1 className="text-3xl font-bold text-center mb-8">Product Inventory System</h1>
 
-      <div className="mb-4">
-        <button
-          onClick={() => setActiveTab('list')}
-          className={`mr-2 px-4 py-2 rounded ${activeTab === 'list' ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-700 hover:bg-gray-400'}`}
-        >
-          View Products
-        </button>
-        <button
-          onClick={() => setActiveTab('add')}
-          className={`px-4 py-2 rounded ${activeTab === 'add' ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-700 hover:bg-gray-400'}`}
-        >
-          Add Product
-        </button>
-      </div>
+            <div className="flex justify-center mb-4">
+                <button
+                    className={`px-4 py-2 rounded-l ${activeTab === 'add' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-black hover:bg-gray-300'}`}
+                    onClick={() => setActiveTab('add')}
+                >
+                    Add Product
+                </button>
+                <button
+                    className={`px-4 py-2 rounded-r ${activeTab === 'deliver' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-black hover:bg-gray-300'}`}
+                    onClick={() => setActiveTab('deliver')}
+                >
+                    Deliver Product
+                </button>
+            </div>
 
-      {activeTab === 'add' && (
-        <div className="mb-8">
-          <ProductForm onProductAdded={handleProductAdded} />
-        </div>
-      )}
+            {activeTab === 'add' && (
+                <div className="mb-8">
+                    <ProductForm onProductAdded={handleProductAdded} />
+                </div>
+            )}
 
-      {activeTab === 'list' && (
-        <div>
-          <ProductList refresh={productsUpdated} />
-        </div>
-      )}
-    </div>
-  );
+            {activeTab === 'deliver' && (
+                <div className="mb-8">
+                    <DeliverProductForm />
+                </div>
+            )}
+
+            <ProductList refresh={refreshList} />
+
+            <div className="mt-8 text-center">
+                <Link href="/return-product" className="bg-red-500 text-white p-2 rounded hover:bg-red-600">
+                    Go to Return Product Page
+                </Link>
+            </div>
+        </main>
+    );
 }
