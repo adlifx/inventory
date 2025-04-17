@@ -7,9 +7,12 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 export default function ProductForm({ onProductAdded }) {
   const [name, setName] = useState('');
   const [serialNumberRanges, setSerialNumberRanges] = useState('');
+  const [startSerialNumber, setStartSerialNumber] = useState('');
+  const [endSerialNumber, setEndSerialNumber] = useState('');
   const [calculatedQuantity, setCalculatedQuantity] = useState(0);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [entryType, setEntryType] = useState('ranges'); // 'ranges' or 'series'
 
   const parseRanges = (rangesString) => {
     const serialNumbers = new Set();
@@ -38,9 +41,12 @@ export default function ProductForm({ onProductAdded }) {
     return { serialNumbers: Array.from(serialNumbers) };
   };
 
-  const handleSerialNumberChange = (e) => {
+  const handleSerialNumberRangesChange = (e) => {
     const value = e.target.value;
     setSerialNumberRanges(value);
+    setStartSerialNumber('');
+    setEndSerialNumber('');
+    setEntryType('ranges');
     const parsed = parseRanges(value);
     if (parsed.error) {
       setMessage(parsed.error);
@@ -48,6 +54,35 @@ export default function ProductForm({ onProductAdded }) {
     } else {
       setMessage('');
       setCalculatedQuantity(parsed.serialNumbers.length);
+    }
+  };
+
+  const handleStartSerialNumberChange = (e) => {
+    setStartSerialNumber(e.target.value);
+    setSerialNumberRanges('');
+    setEntryType('series');
+    updateCalculatedQuantity(e.target.value, endSerialNumber);
+  };
+
+  const handleEndSerialNumberChange = (e) => {
+    setEndSerialNumber(e.target.value);
+    setSerialNumberRanges('');
+    setEntryType('series');
+    updateCalculatedQuantity(startSerialNumber, e.target.value);
+  };
+
+  const updateCalculatedQuantity = (start, end) => {
+    const startNum = parseInt(start, 10);
+    const endNum = parseInt(end, 10);
+    if (!isNaN(startNum) && !isNaN(endNum) && endNum >= startNum) {
+      setCalculatedQuantity(endNum - startNum + 1);
+      setMessage('');
+    } else if (start !== '' || end !== '') {
+      setMessage('Invalid serial number series.');
+      setCalculatedQuantity(0);
+    } else {
+      setCalculatedQuantity(0);
+      setMessage('');
     }
   };
 
@@ -62,16 +97,31 @@ export default function ProductForm({ onProductAdded }) {
       return;
     }
 
-    const parsed = parseRanges(serialNumberRanges);
-    if (parsed.error) {
-      setMessage(parsed.error);
-      setLoading(false);
-      return;
+    let serialNumbersArray = [];
+    if (entryType === 'ranges') {
+      const parsed = parseRanges(serialNumberRanges);
+      if (parsed.error) {
+        setMessage(parsed.error);
+        setLoading(false);
+        return;
+      }
+      serialNumbersArray = parsed.serialNumbers;
+    } else if (entryType === 'series') {
+      const startNum = parseInt(startSerialNumber, 10);
+      const endNum = parseInt(endSerialNumber, 10);
+      if (!isNaN(startNum) && !isNaN(endNum) && endNum >= startNum) {
+        for (let i = startNum; i <= endNum; i++) {
+          serialNumbersArray.push(i.toString());
+        }
+      } else {
+        setMessage('Invalid serial number series.');
+        setLoading(false);
+        return;
+      }
     }
-    const serialNumbersArray = parsed.serialNumbers;
 
     if (serialNumbersArray.length === 0) {
-      setMessage('Please enter at least one serial number or a valid range.');
+      setMessage('Please enter serial numbers or a valid series/range.');
       setLoading(false);
       return;
     }
@@ -88,6 +138,8 @@ export default function ProductForm({ onProductAdded }) {
       setMessage(`Product "${name}" with ${serialNumbersArray.length} units added successfully.`);
       setName('');
       setSerialNumberRanges('');
+      setStartSerialNumber('');
+      setEndSerialNumber('');
       setCalculatedQuantity(0);
       if (onProductAdded) {
         onProductAdded();
@@ -120,25 +172,59 @@ export default function ProductForm({ onProductAdded }) {
             required
           />
         </div>
+
         <div className="mb-4">
-          <label htmlFor="serialNumberRanges" className="block text-sm font-medium mb-1">
-            Serial Numbers / Ranges (comma-separated, e.g., SN001, 100-105, ABC01)
-          </label>
-          <textarea
-            id="serialNumberRanges"
-            className="w-full p-2 border rounded"
-            value={serialNumberRanges}
-            onChange={handleSerialNumberChange}
-            rows="4"
-            placeholder="SN001, 100-105, ABC01-ABC03, XYZ"
-          />
+          <label className="block text-sm font-medium mb-1">Add Serial Numbers</label>
+          <div className="space-y-2">
+            <div>
+              <label htmlFor="serialNumberRanges" className="block text-sm font-medium mb-1">
+                As Ranges (comma-separated, e.g., SN001, 100-105)
+              </label>
+              <textarea
+                id="serialNumberRanges"
+                className="w-full p-2 border rounded"
+                value={serialNumberRanges}
+                onChange={handleSerialNumberRangesChange}
+                rows="2"
+                placeholder="SN001, 100-105, ABC01-ABC03"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                As Series (Start and End Number)
+              </label>
+              <div className="flex space-x-2">
+                <div className="w-1/2">
+                  <input
+                    type="text"
+                    className="w-full p-2 border rounded"
+                    placeholder="Start Number"
+                    value={startSerialNumber}
+                    onChange={handleStartSerialNumberChange}
+                  />
+                </div>
+                <div className="w-1/2">
+                  <input
+                    type="text"
+                    className="w-full p-2 border rounded"
+                    placeholder="End Number"
+                    value={endSerialNumber}
+                    onChange={handleEndSerialNumberChange}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
           {calculatedQuantity > 0 && (
             <p className="mt-2 text-sm text-gray-600">
               Calculated Quantity: {calculatedQuantity}
             </p>
           )}
+          {message.includes('Invalid serial number series') && (
+            <p className="mt-2 text-sm text-red-600">{message}</p>
+          )}
         </div>
-        {/* Removed Quantity input */}
+
         <button
           type="submit"
           className="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600"
