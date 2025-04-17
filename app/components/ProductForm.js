@@ -1,283 +1,145 @@
 'use client'; // Add this line at the very top
 // src/components/ProductForm.js
-import { useState, useEffect } from 'react'; // Make sure useEffect is imported
+import { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp, getDocs, query, where, updateDoc, increment, arrayUnion } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import Link from 'next/link';
 
-export default function ProductForm({ onProductAdded }) {
-  const [name, setName] = useState('');
-  const [serialNumbersType, setSerialNumbersType] = useState('manual'); // 'manual' or 'series'
-  const [manualSerialNumbers, setManualSerialNumbers] = useState('');
-  const [startSerialNumber, setStartSerialNumber] = useState('');
-  const [endSerialNumber, setEndSerialNumber] = useState('');
-  const [quantity, setQuantity] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
-  const [existingSerialNumbers, setExistingSerialNumbers] = useState([]);
+export default function ProductList({ refresh }) {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [productQuantities, setProductQuantities] = useState({});
 
   useEffect(() => {
-    const fetchExistingSerials = async () => {
-      const querySnapshot = await getDocs(collection(db, 'products'));
-      const allSerials = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data.serialNumbers && Array.isArray(data.serialNumbers)) {
-          allSerials.push(...data.serialNumbers);
-        }
+    setLoading(true);
+    const q = query(
+      collection(db, 'products'),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const productData = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            name: data.name,
+            quantity: data.quantity,
+            serialNumbers: Array.isArray(data.serialNumbers) ? data.serialNumbers : [],
+            createdAt: data.createdAt?.toDate().toLocaleString() || 'Unknown',
+            serialNumbersDisplay: formatSerialNumbers(data.serialNumbers),
+          };
+        });
+        setProducts(productData);
+        setLoading(false);
+      },
+      (err) => {
+        console.error('Error fetching products:', err);
+        setError('Failed to load products');
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [refresh]);
+
+  useEffect(() => {
+    const calculateTotalQuantities = () => {
+      const quantities = {};
+      products.forEach(product => {
+        quantities[product.name] = (quantities[product.name] || 0) + product.quantity;
       });
-      setExistingSerialNumbers(allSerials);
+      setProductQuantities(quantities);
     };
 
-    fetchExistingSerials();
-  }, []);
+    calculateTotalQuantities();
+  }, [products]);
 
-  const handleSerialNumbersTypeChange = (e) => {
-    setSerialNumbersType(e.target.value);
-    setManualSerialNumbers('');
-    setStartSerialNumber('');
-    setEndSerialNumber('');
-    setQuantity(0);
-  };
-
-  const handleManualSerialNumbersChange = (e) => {
-    setManualSerialNumbers(e.target.value);
-    const snArray = e.target.value.split(',').map(sn => sn.trim()).filter(sn => sn !== '');
-    setQuantity([...new Set(snArray)].length);
-  };
-
-  const handleStartSerialNumberChange = (e) => {
-    setStartSerialNumber(e.target.value);
-    calculateQuantityFromSeries(e.target.value, endSerialNumber);
-  };
-
-  const handleEndSerialNumberChange = (e) => {
-    setEndSerialNumber(e.target.value);
-    calculateQuantityFromSeries(startSerialNumber, e.target.value);
-  };
-
-  const calculateQuantityFromSeries = (start, end) => {
-    if (start && end) {
-      const startNum = parseInt(start, 10);
-      const endNum = parseInt(end, 10);
-      if (!isNaN(startNum) && !isNaN(endNum) && endNum >= startNum) {
-        setQuantity(endNum - startNum + 1);
-      } else {
-        setQuantity(0);
-      }
-    } else {
-      setQuantity(0);
+  const formatSerialNumbers = (serialNumbers) => {
+    if (!Array.isArray(serialNumbers) || serialNumbers.length === 0) {
+      return '';
     }
-  };
 
-  const isSerialNumberTaken = (serial) => existingSerialNumbers.includes(serial);
+    const numbers = serialNumbers.map(Number).sort((a, b) => a - b);
+    const ranges = [];
+    let start = numbers[0];
+    let end = numbers[0];
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage('');
-
-    let serialNumbersArray = [];
-    if (serialNumbersType === 'manual') {
-      serialNumbersArray = manualSerialNumbers.split(',').map(sn => sn.trim()).filter(sn => sn !== '');
-    } else if (serialNumbersType === 'series' && startSerialNumber && endSerialNumber) {
-      const startNum = parseInt(startSerialNumber, 10);
-      const endNum = parseInt(endSerialNumber, 10);
-      if (!isNaN(startNum) && !isNaN(endNum) && endNum >= startNum) {
-        for (let i = startNum; i <= endNum; i++) {
-          serialNumbersArray.push(i.toString());
+    for (let i = 1; i < numbers.length; i++) {
+      if (numbers[i] === end + 1) {
+        end = numbers[i];
+      } else {
+        if (start === end) {
+          ranges.push(start);
+        } else {
+          ranges.push(`${start}-${end}`);
         }
+        start = numbers[i];
+        end = numbers[i];
       }
     }
 
-    const uniqueSerialNumbers = [...new Set(serialNumbersArray)];
-    const finalQuantity = serialNumbersType === 'series' ? quantity : uniqueSerialNumbers.length;
-
-    if (finalQuantity === 0 && serialNumbersType === 'series') {
-      setMessage('Error: Invalid serial number range.');
-      setLoading(false);
-      return;
+    if (start === end) {
+      ranges.push(start);
+    } else {
+      ranges.push(`${start}-${end}`);
     }
 
-    const duplicateSerials = uniqueSerialNumbers.filter(isSerialNumberTaken);
-    if (duplicateSerials.length > 0) {
-      setMessage(`Error: Serial number(s) already exist: ${duplicateSerials.join(', ')}`);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const productsRef = collection(db, 'products');
-      const existingProductQuery = query(productsRef, where('name', '==', name));
-      const existingProductSnapshot = await getDocs(existingProductQuery);
-
-      if (!existingProductSnapshot.empty) {
-        const existingProductDoc = existingProductSnapshot.docs[0].ref;
-        await updateDoc(existingProductDoc, {
-          serialNumbers: arrayUnion(...uniqueSerialNumbers),
-          quantity: increment(finalQuantity),
-          updatedAt: serverTimestamp()
-        });
-        setMessage(`Quantity updated for product "${name}".`);
-      } else {
-        await addDoc(productsRef, {
-          name,
-          serialNumbers: uniqueSerialNumbers,
-          quantity: finalQuantity,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
-        setMessage('Product added successfully!');
-      }
-
-      if (onProductAdded) {
-        onProductAdded(); // Notify the parent component to refresh the list
-      }
-      setName('');
-      setManualSerialNumbers('');
-      setStartSerialNumber('');
-      setEndSerialNumber('');
-      setQuantity(0);
-      setSerialNumbersType('manual'); // Reset to default
-    } catch (error) {
-      console.error('Error adding/updating product:', error);
-      setMessage(`Error: ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
+    return ranges.join(', ');
   };
+
+  if (loading) return <div className="text-center p-4 text-white">Loading products...</div>;
+  if (error) return <div className="text-red-500 p-4">Error: {error}</div>;
 
   return (
-    <div
-      className="max-w-md mx-auto p-4 rounded shadow"
-      style={{ backgroundColor: 'white', color: 'black' }}
-    >
-      <h2 className="text-xl font-semibold mb-4" style={{ color: 'black' }}>
-        Add New Product
-      </h2>
+    <div className="mt-8 text-white">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold">Product Inventory</h2>
+        <Link href="/return-product" className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+          Go to Return Product Page
+        </Link>
+      </div>
 
-      {message && (
-        <div
-          className={`p-2 mb-4 rounded ${
-            message.includes('Error') ? 'bg-red-100 text-black' : 'bg-yellow-100 text-black'
-          }`}
-        >
-          {message}
+      <h3 className="text-lg font-semibold mb-2">Total Quantity by Product:</h3>
+      <ul>
+        {Object.entries(productQuantities).map(([name, total]) => (
+          <li key={name} className="mb-1">
+            <span className="font-semibold">{name}:</span> {total}
+          </li>
+        ))}
+      </ul>
+
+      {products.length > 0 && (
+        <div className="overflow-x-auto mt-4">
+          <h3 className="text-lg font-semibold mb-2">All Products:</h3>
+          <table className="min-w-full bg-white border text-black">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="py-2 px-4 border text-left">Name</th>
+                <th className="py-2 px-4 border text-left">Quantity</th>
+                <th className="py-2 px-4 border text-left">Serial Numbers</th>
+                <th className="py-2 px-4 border text-left">Added On</th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.map(product => (
+                <tr key={product.id} className="hover:bg-gray-50">
+                  <td className="py-2 px-4 border">{product.name}</td>
+                  <td className="py-2 px-4 border">{product.quantity}</td>
+                  <td className="py-2 px-4 border">
+                    <div className="max-h-24 overflow-y-auto">
+                      {product.serialNumbersDisplay}
+                    </div>
+                  </td>
+                  <td className="py-2 px-4 border">{product.createdAt}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
-
-      <form onSubmit={handleSubmit}>
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-1" style={{ color: 'black' }}>
-            Product Name
-          </label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full p-2 border rounded text-black"
-            style={{ backgroundColor: 'white', color: 'black' }}
-            required
-          />
-        </div>
-
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-1" style={{ color: 'black' }}>
-            Serial Number Entry Type
-          </label>
-          <select
-            value={serialNumbersType}
-            onChange={handleSerialNumbersTypeChange}
-            className="w-full p-2 border rounded text-black"
-            style={{ backgroundColor: 'white', color: 'black' }}
-          >
-            <option value="manual">Manual Entry (comma-separated)</option>
-            <option value="series">Number Series (Start - End)</option>
-          </select>
-        </div>
-
-        {serialNumbersType === 'manual' && (
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-1" style={{ color: 'black' }}>
-              Serial Numbers
-            </label>
-            <textarea
-              value={manualSerialNumbers}
-              onChange={handleManualSerialNumbersChange}
-              className="w-full p-2 border rounded text-black"
-              rows="4"
-              placeholder="SN001, SN002, SN003..."
-              style={{ backgroundColor: 'white', color: 'black' }}
-            />
-            {manualSerialNumbers && (
-              <p className="text-sm text-gray-500 mt-1" style={{ color: 'black' }}>
-                Detected {quantity} serial numbers
-              </p>
-            )}
-          </div>
-        )}
-
-        {serialNumbersType === 'series' && (
-          <div className="mb-4">
-            <div className="flex space-x-2">
-              <div className="w-1/2">
-                <label className="block text-sm font-medium mb-1" style={{ color: 'black' }}>
-                  Start Number
-                </label>
-                <input
-                  type="number"
-                  value={startSerialNumber}
-                  onChange={handleStartSerialNumberChange}
-                  className="w-full p-2 border rounded text-black"
-                  style={{ backgroundColor: 'white', color: 'black' }}
-                />
-              </div>
-              <div className="w-1/2">
-                <label className="block text-sm font-medium mb-1" style={{ color: 'black' }}>
-                  End Number
-                </label>
-                <input
-                  type="number"
-                  value={endSerialNumber}
-                  onChange={handleEndSerialNumberChange}
-                  className="w-full p-2 border rounded text-black"
-                  style={{ backgroundColor: 'white', color: 'black' }}
-                />
-              </div>
-            </div>
-            {startSerialNumber && endSerialNumber && quantity > 0 && (
-              <p className="text-sm text-green-500 mt-1" style={{ color: 'black' }}>
-                Quantity will be: {quantity}
-              </p>
-            )}
-            {startSerialNumber && endSerialNumber && quantity === 0 && (
-              <p className="text-sm text-red-500 mt-1" style={{ color: 'black' }}>
-                Invalid number series.
-              </p>
-            )}
-          </div>
-        )}
-
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-1" style={{ color: 'black' }}>
-            Quantity (Auto-calculated)
-          </label>
-          <input
-            type="number"
-            value={quantity}
-            className="w-full p-2 border rounded text-black bg-gray-100"
-            style={{ color: 'black' }}
-            readOnly
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 disabled:bg-blue-300"
-        >
-          {loading ? 'Adding...' : 'Add Product'}
-        </button>
-      </form>
     </div>
   );
 }
