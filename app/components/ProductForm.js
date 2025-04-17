@@ -1,4 +1,3 @@
-// src/components/ProductForm.js
 'use client';
 
 import { useState } from 'react';
@@ -7,20 +6,72 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function ProductForm({ onProductAdded }) {
   const [name, setName] = useState('');
-  const [quantity, setQuantity] = useState('');
-  const [serialNumbersInput, setSerialNumbersInput] = useState('');
+  const [serialNumberRanges, setSerialNumberRanges] = useState('');
+  const [calculatedQuantity, setCalculatedQuantity] = useState(0);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const parseRanges = (rangesString) => {
+    const serialNumbers = new Set();
+    const ranges = rangesString.split(',').map(r => r.trim()).filter(r => r !== '');
+
+    for (const range of ranges) {
+      if (range.includes('-')) {
+        const [startStr, endStr] = range.split('-').map(s => s.trim());
+        const start = parseInt(startStr, 10);
+        const end = parseInt(endStr, 10);
+
+        if (!isNaN(start) && !isNaN(end) && start <= end) {
+          for (let i = start; i <= end; i++) {
+            serialNumbers.add(i.toString().padStart(startStr.length, '0')); // Keep leading zeros
+          }
+        } else {
+          return { error: `Invalid range: ${range}` };
+        }
+      } else {
+        const sn = range.trim();
+        if (sn) {
+          serialNumbers.add(sn);
+        }
+      }
+    }
+    return { serialNumbers: Array.from(serialNumbers) };
+  };
+
+  const handleSerialNumberChange = (e) => {
+    const value = e.target.value;
+    setSerialNumberRanges(value);
+    const parsed = parseRanges(value);
+    if (parsed.error) {
+      setMessage(parsed.error);
+      setCalculatedQuantity(0);
+    } else {
+      setMessage('');
+      setCalculatedQuantity(parsed.serialNumbers.length);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage('');
 
-    const serialNumbersArray = serialNumbersInput.split(',').map(sn => sn.trim()).filter(sn => sn !== '');
+    if (!name) {
+      setMessage('Please enter product name.');
+      setLoading(false);
+      return;
+    }
 
-    if (!name || !quantity) {
-      setMessage('Please enter product name and quantity.');
+    const parsed = parseRanges(serialNumberRanges);
+    if (parsed.error) {
+      setMessage(parsed.error);
+      setLoading(false);
+      return;
+    }
+    const serialNumbersArray = parsed.serialNumbers;
+
+    if (serialNumbersArray.length === 0) {
+      setMessage('Please enter at least one serial number or a valid range.');
       setLoading(false);
       return;
     }
@@ -29,15 +80,15 @@ export default function ProductForm({ onProductAdded }) {
       const productsRef = collection(db, 'products');
       await addDoc(productsRef, {
         name,
-        quantity: parseInt(quantity, 10),
+        quantity: serialNumbersArray.length, // Quantity is the number of serial numbers
         serialNumbers: serialNumbersArray,
         createdAt: serverTimestamp(),
       });
 
-      setMessage(`Product "${name}" added successfully.`);
+      setMessage(`Product "${name}" with ${serialNumbersArray.length} units added successfully.`);
       setName('');
-      setQuantity('');
-      setSerialNumbersInput('');
+      setSerialNumberRanges('');
+      setCalculatedQuantity(0);
       if (onProductAdded) {
         onProductAdded();
       }
@@ -70,31 +121,28 @@ export default function ProductForm({ onProductAdded }) {
           />
         </div>
         <div className="mb-4">
-          <label htmlFor="quantity" className="block text-sm font-medium mb-1">Quantity</label>
-          <input
-            type="number"
-            id="quantity"
-            className="w-full p-2 border rounded"
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-            required
-          />
-        </div>
-        <div className="mb-4">
-          <label htmlFor="serialNumbers" className="block text-sm font-medium mb-1">Serial Numbers (comma-separated)</label>
+          <label htmlFor="serialNumberRanges" className="block text-sm font-medium mb-1">
+            Serial Numbers / Ranges (comma-separated, e.g., SN001, 100-105, ABC01)
+          </label>
           <textarea
-            id="serialNumbers"
+            id="serialNumberRanges"
             className="w-full p-2 border rounded"
-            value={serialNumbersInput}
-            onChange={(e) => setSerialNumbersInput(e.target.value)}
-            rows="3"
-            placeholder="SN001, SN002, SN003..."
+            value={serialNumberRanges}
+            onChange={handleSerialNumberChange}
+            rows="4"
+            placeholder="SN001, 100-105, ABC01-ABC03, XYZ"
           />
+          {calculatedQuantity > 0 && (
+            <p className="mt-2 text-sm text-gray-600">
+              Calculated Quantity: {calculatedQuantity}
+            </p>
+          )}
         </div>
+        {/* Removed Quantity input */}
         <button
           type="submit"
           className="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600"
-          disabled={loading}
+          disabled={loading || calculatedQuantity === 0}
         >
           {loading ? 'Adding...' : 'Add Product'}
         </button>
