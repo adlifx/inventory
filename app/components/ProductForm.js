@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+// src/components/ProductForm.js
+import { useState } from 'react';
 import { db } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp, getDocs, query, where, updateDoc, increment, arrayUnion } from 'firebase/firestore';
 
@@ -17,32 +18,26 @@ export default function ProductForm({ onProductAdded }) {
 
   useEffect(() => {
     const fetchExistingSerials = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'products'));
-        const allSerials = [];
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          if (data.serialNumbers && Array.isArray(data.serialNumbers)) {
-            allSerials.push(...data.serialNumbers);
-          }
-        });
-        setExistingSerialNumbers(allSerials);
-      } catch (error) {
-        console.error('Error fetching existing serial numbers:', error);
-        setMessage(`Error fetching existing serials: ${error.message}`);
-      }
+      const querySnapshot = await getDocs(collection(db, 'products'));
+      const allSerials = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.serialNumbers && Array.isArray(data.serialNumbers)) {
+          allSerials.push(...data.serialNumbers);
+        }
+      });
+      setExistingSerialNumbers(allSerials);
     };
 
     fetchExistingSerials();
   }, []);
 
-  useEffect(() => {
-    setQuantity(0); // Reset quantity when entry type or serials change
-    setMessage(''); // Clear previous messages
-  }, [serialNumbersType, manualSerialNumbers, startSerialNumber, endSerialNumber]);
-
   const handleSerialNumbersTypeChange = (e) => {
     setSerialNumbersType(e.target.value);
+    setManualSerialNumbers('');
+    setStartSerialNumber('');
+    setEndSerialNumber('');
+    setQuantity(0);
   };
 
   const handleManualSerialNumbersChange = (e) => {
@@ -62,12 +57,14 @@ export default function ProductForm({ onProductAdded }) {
   };
 
   const calculateQuantityFromSeries = (start, end) => {
-    console.log('Start:', start, 'End:', end);
-    const startNum = parseInt(start, 10);
-    const endNum = parseInt(end, 10);
-    console.log('Parsed Start:', startNum, 'Parsed End:', endNum);
-    if (!isNaN(startNum) && !isNaN(endNum) && endNum >= startNum) {
-      setQuantity(endNum - startNum + 1);
+    if (start && end) {
+      const startNum = parseInt(start, 10);
+      const endNum = parseInt(end, 10);
+      if (!isNaN(startNum) && !isNaN(endNum) && endNum >= startNum) {
+        setQuantity(endNum - startNum + 1);
+      } else {
+        setQuantity(0);
+      }
     } else {
       setQuantity(0);
     }
@@ -96,7 +93,7 @@ export default function ProductForm({ onProductAdded }) {
     const uniqueSerialNumbers = [...new Set(serialNumbersArray)];
     const finalQuantity = serialNumbersType === 'series' ? quantity : uniqueSerialNumbers.length;
 
-    if (finalQuantity === 0 && serialNumbersType === 'series' && (startSerialNumber || endSerialNumber)) {
+    if (finalQuantity === 0 && serialNumbersType === 'series') {
       setMessage('Error: Invalid serial number range.');
       setLoading(false);
       return;
@@ -105,18 +102,6 @@ export default function ProductForm({ onProductAdded }) {
     const duplicateSerials = uniqueSerialNumbers.filter(isSerialNumberTaken);
     if (duplicateSerials.length > 0) {
       setMessage(`Error: Serial number(s) already exist: ${duplicateSerials.join(', ')}`);
-      setLoading(false);
-      return;
-    }
-
-    if (!name) {
-      setMessage('Error: Product name is required.');
-      setLoading(false);
-      return;
-    }
-
-    if (finalQuantity === 0 && serialNumbersType === 'manual' && manualSerialNumbers.trim() !== '') {
-      setMessage('Error: No valid serial numbers entered.');
       setLoading(false);
       return;
     }
