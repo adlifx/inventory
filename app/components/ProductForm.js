@@ -56,26 +56,32 @@ export default function ProductForm({ onProductAdded }) {
   };
 
   const handleStartSerialNumberChange = (e) => {
-    setStartSerialNumber(e.target.value);
-    calculateQuantityFromSeries(e.target.value, endSerialNumber);
+    const newValue = e.target.value;
+    setStartSerialNumber(newValue);
+    console.log('handleStartSerialNumberChange - newValue:', newValue, 'endSerialNumber:', endSerialNumber);
+    calculateQuantityFromSeries(newValue, endSerialNumber);
   };
 
   const handleEndSerialNumberChange = (e) => {
-    setEndSerialNumber(e.target.value);
-    calculateQuantityFromSeries(startSerialNumber, e.target.value);
+    const newValue = e.target.value;
+    setEndSerialNumber(newValue);
+    console.log('handleEndSerialNumberChange - startSerialNumber:', startSerialNumber, 'newValue:', newValue);
+    calculateQuantityFromSeries(startSerialNumber, newValue);
   };
 
   const calculateQuantityFromSeries = (start, end) => {
-    if (start && end) {
-      const startNum = parseInt(start, 10);
-      const endNum = parseInt(end, 10);
-      if (!isNaN(startNum) && !isNaN(endNum) && endNum >= startNum) {
-        setQuantity(endNum - startNum + 1);
-      } else {
-        setQuantity(0);
-      }
-    } else {
+    console.log('calculateQuantityFromSeries - Received Start:', start, 'Received End:', end);
+    const startNum = parseInt(start, 10);
+    const endNum = parseInt(end, 10);
+    console.log('calculateQuantityFromSeries - Parsed Start:', startNum, 'Parsed End:', endNum);
+
+    if (isNaN(startNum) || isNaN(endNum) || endNum < startNum) {
       setQuantity(0);
+      console.log('calculateQuantityFromSeries - Setting quantity to 0 due to invalid input');
+    } else {
+      const calculatedQuantity = endNum - startNum + 1;
+      setQuantity(calculatedQuantity);
+      console.log('calculateQuantityFromSeries - Setting quantity to:', calculatedQuantity);
     }
   };
 
