@@ -137,18 +137,17 @@ export default function ProductForm({ onProductAdded }) {
       const existingProductSnapshot = await getDocs(existingProductQuery);
 
       if (!existingProductSnapshot.empty) {
-        const existingProductDoc = existingProductSnapshot.docs[0].ref;
         const existingProductData = existingProductSnapshot.docs[0].data();
         const existingSerials = existingProductData.serialNumbers || [];
 
-        // Filter out new serials that already exist for this product
-        const newSerialsToAdd = uniqueNewSerials.filter(
-          (serial) => !existingSerials.includes(serial)
-        );
+        // Check if any of the new serials already exist
+        const hasExistingSerial = uniqueNewSerials.some(serial => existingSerials.includes(serial));
 
-        if (newSerialsToAdd.length > 0 || finalQuantityToAdd > 0) {
-          await updateDoc(existingProductDoc, {
-            serialNumbers: arrayUnion(...newSerialsToAdd),
+        if (hasExistingSerial) {
+          setMessage(`Warning: Some or all of the entered serial numbers already exist for product "${name}". No new items added for these serial numbers.`);
+        } else if (finalQuantityToAdd > 0) {
+          await updateDoc(existingProductSnapshot.docs[0].ref, {
+            serialNumbers: arrayUnion(...uniqueNewSerials),
             quantity: increment(finalQuantityToAdd),
             updatedAt: serverTimestamp(),
           });
