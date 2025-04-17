@@ -1,7 +1,7 @@
 // src/components/ProductForm.js
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { db } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDocs, query, where, updateDoc, increment, arrayUnion } from 'firebase/firestore';
 
 export default function ProductForm({ onProductAdded }) {
   const [name, setName] = useState('');
@@ -111,13 +111,12 @@ export default function ProductForm({ onProductAdded }) {
 
       if (!existingProductSnapshot.empty) {
         const existingProductDoc = existingProductSnapshot.docs[0].ref;
-        // You might want to update the existing document instead of adding a new one
-        // await updateDoc(existingProductDoc, {
-        //   serialNumbers: arrayUnion(...uniqueSerialNumbers),
-        //   quantity: increment(finalQuantity),
-        //   updatedAt: serverTimestamp()
-        // });
-        setMessage('Warning: Product with this name already exists. Consider updating instead.');
+        await updateDoc(existingProductDoc, {
+          serialNumbers: arrayUnion(...uniqueSerialNumbers),
+          quantity: increment(finalQuantity),
+          updatedAt: serverTimestamp()
+        });
+        setMessage(`Quantity updated for product "${name}".`);
       } else {
         await addDoc(productsRef, {
           name,
@@ -127,18 +126,19 @@ export default function ProductForm({ onProductAdded }) {
           updatedAt: serverTimestamp()
         });
         setMessage('Product added successfully!');
-        if (onProductAdded) {
-          onProductAdded(); // Notify the parent component to refresh the list
-        }
-        setName('');
-        setManualSerialNumbers('');
-        setStartSerialNumber('');
-        setEndSerialNumber('');
-        setQuantity(0);
-        setSerialNumbersType('manual'); // Reset to default
       }
+
+      if (onProductAdded) {
+        onProductAdded(); // Notify the parent component to refresh the list
+      }
+      setName('');
+      setManualSerialNumbers('');
+      setStartSerialNumber('');
+      setEndSerialNumber('');
+      setQuantity(0);
+      setSerialNumbersType('manual'); // Reset to default
     } catch (error) {
-      console.error('Error adding product:', error);
+      console.error('Error adding/updating product:', error);
       setMessage(`Error: ${error.message}`);
     } finally {
       setLoading(false);
@@ -157,7 +157,7 @@ export default function ProductForm({ onProductAdded }) {
       {message && (
         <div
           className={`p-2 mb-4 rounded ${
-            message.includes('Error') ? 'bg-red-100 text-black' : 'bg-yellow-100 text-black' // Changed to yellow for warning
+            message.includes('Error') ? 'bg-red-100 text-black' : 'bg-yellow-100 text-black'
           }`}
         >
           {message}
