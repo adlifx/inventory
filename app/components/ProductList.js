@@ -5,11 +5,28 @@ import { db } from '../lib/firebase';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import Link from 'next/link';
 
+const months = [
+  { value: '', label: 'All Months' },
+  { value: '01', label: 'January' }, { value: '02', label: 'February' }, { value: '03', label: 'March' },
+  { value: '04', label: 'April' }, { value: '05', label: 'May' }, { value: '06', label: 'June' },
+  { value: '07', label: 'July' }, { value: '08', label: 'August' }, { value: '09', label: 'September' },
+  { value: '10', label: 'October' }, { value: '11', label: 'November' }, { value: '12', label: 'December' },
+];
+
+const years = Array.from({ length: new Date().getFullYear() - 2020 + 1 }, (_, i) => ({
+  value: (2020 + i).toString(),
+  label: (2020 + i).toString(),
+})).reverse();
+years.unshift({ value: '', label: 'All Years' });
+
 export default function ProductList({ refresh }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [productQuantities, setProductQuantities] = useState({});
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
+  const [filteredProducts, setFilteredProducts] = useState([]);
 
   useEffect(() => {
     setLoading(true);
@@ -30,6 +47,7 @@ export default function ProductList({ refresh }) {
             serialNumbers: Array.isArray(data.serialNumbers) ? data.serialNumbers : [],
             createdAt: data.createdAt?.toDate().toLocaleString() || 'Unknown',
             serialNumbersDisplay: formatSerialNumbers(data.serialNumbers),
+            createdAtDate: data.createdAt?.toDate(), // Store Date object for filtering
           };
         });
         setProducts(productData);
@@ -56,6 +74,38 @@ export default function ProductList({ refresh }) {
 
     calculateTotalQuantities();
   }, [products]);
+
+  useEffect(() => {
+    const filterProducts = () => {
+      let filtered = products;
+
+      if (selectedMonth) {
+        filtered = filtered.filter(product => {
+          const month = (product.createdAtDate?.getMonth() + 1).toString().padStart(2, '0');
+          return month === selectedMonth;
+        });
+      }
+
+      if (selectedYear) {
+        filtered = filtered.filter(product => {
+          const year = product.createdAtDate?.getFullYear().toString();
+          return year === selectedYear;
+        });
+      }
+
+      setFilteredProducts(filtered);
+    };
+
+    filterProducts();
+  }, [products, selectedMonth, selectedYear]);
+
+  const handleMonthChange = (event) => {
+    setSelectedMonth(event.target.value);
+  };
+
+  const handleYearChange = (event) => {
+    setSelectedYear(event.target.value);
+  };
 
   const formatSerialNumbers = (serialNumbers) => {
     if (!Array.isArray(serialNumbers) || serialNumbers.length === 0) {
@@ -102,6 +152,25 @@ export default function ProductList({ refresh }) {
         </Link>
       </div>
 
+      <div className="mb-4 flex items-center space-x-4">
+        <div>
+          <label htmlFor="month" className="mr-2">Filter by Month:</label>
+          <select id="month" value={selectedMonth} onChange={handleMonthChange} className="bg-gray-700 text-white rounded py-1 px-2">
+            {months.map(month => (
+              <option key={month.value} value={month.value}>{month.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="year" className="mr-2">Filter by Year:</label>
+          <select id="year" value={selectedYear} onChange={handleYearChange} className="bg-gray-700 text-white rounded py-1 px-2">
+            {years.map(year => (
+              <option key={year.value} value={year.value}>{year.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       <h3 className="text-lg font-semibold mb-2">Total Quantity by Product:</h3>
       <ul>
         {Object.entries(productQuantities).map(([name, total]) => (
@@ -111,7 +180,7 @@ export default function ProductList({ refresh }) {
         ))}
       </ul>
 
-      {products.length > 0 && (
+      {filteredProducts.length > 0 && (
         <div className="overflow-x-auto mt-4">
           <h3 className="text-lg font-semibold mb-2">All Products:</h3>
           <table className="min-w-full bg-white border text-black">
@@ -124,7 +193,7 @@ export default function ProductList({ refresh }) {
               </tr>
             </thead>
             <tbody>
-              {products.map(product => (
+              {filteredProducts.map(product => (
                 <tr key={product.id} className="hover:bg-gray-50">
                   <td className="py-2 px-4 border">{product.name}</td>
                   <td className="py-2 px-4 border">{product.quantity}</td>
@@ -139,6 +208,12 @@ export default function ProductList({ refresh }) {
             </tbody>
           </table>
         </div>
+      )}
+      {filteredProducts.length === 0 && !loading && !error && products.length > 0 && (
+        <p className="mt-4">No products match the selected month and year.</p>
+      )}
+      {products.length === 0 && !loading && !error && (
+        <p className="mt-4">No products recorded yet.</p>
       )}
     </div>
   );
