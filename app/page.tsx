@@ -3,8 +3,8 @@
 'use client';
 
 import { useState } from 'react';
-//import ProductForm from '@/components/ProductForm'; // Adjust the import path if necessary
-import ProductList from '@/components/ProductList'; // Adjust the import path if necessary
+import ProductForm from './components/ProductForm'; // Adjust the import path if necessary
+import ProductList from './components/ProductList'; // Adjust the import path if necessary
 
 export default function HomePage() {
   const [productsUpdated, setProductsUpdated] = useState(false);
