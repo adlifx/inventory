@@ -1,58 +1,37 @@
-// src/app/page.tsx
+// app/page.tsx (example - your actual file might look different)
+
 'use client';
 
-import ProductForm from './components/ProductForm';
-import ProductList from './components/ProductList';
-import DeliverProductForm from './components/DeliverProductForm';
-import Link from 'next/link'; // Import the Link component
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
+import ProductForm from '@/components/ProductForm'; // Adjust the import path if necessary
+import ProductList from '@/components/ProductList'; // Adjust the import path if necessary
 
-export default function Home() {
-    const [activeTab, setActiveTab] = useState('add');
-    const [refreshList, setRefreshList] = useState(false);
+export default function HomePage() {
+  const [productsUpdated, setProductsUpdated] = useState(false);
+  const [activeTab, setActiveTab] = useState<'add' | 'list'>('list'); // Assuming you have tabs
 
-    const handleProductAdded = useCallback(() => {
-        setRefreshList((prev) => !prev);
-    }, []);
+  const handleProductAdded = () => {
+    setProductsUpdated(prev => !prev); // Toggle state to trigger re-render in ProductList
+    setActiveTab('list'); // Switch back to the list after adding
+  };
 
-    return (
-        <main className="container mx-auto py-8 px-4">
-            <h1 className="text-3xl font-bold text-center mb-8">Product Inventory System</h1>
+  return (
+    <div>
+      {/* ... other components and UI ... */}
+      {activeTab === 'add' && (
+        <div className="mb-8">
+          {/* Change 'refresh' to 'onProductAdded' */}
+          <ProductForm onProductAdded={handleProductAdded} />
+        </div>
+      )}
 
-            <div className="flex justify-center mb-4">
-                <button
-                    className={`px-4 py-2 rounded-l ${activeTab === 'add' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-black hover:bg-gray-300'}`}
-                    onClick={() => setActiveTab('add')}
-                >
-                    Add Product
-                </button>
-                <button
-                    className={`px-4 py-2 rounded-r ${activeTab === 'deliver' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-black hover:bg-gray-300'}`}
-                    onClick={() => setActiveTab('deliver')}
-                >
-                    Deliver Product
-                </button>
-            </div>
-
-            {activeTab === 'add' && (
-                <div className="mb-8">
-                    <ProductForm onProductAdded={handleProductAdded} />
-                </div>
-            )}
-
-            {activeTab === 'deliver' && (
-                <div className="mb-8">
-                    <DeliverProductForm />
-                </div>
-            )}
-
-            <ProductList refresh={refreshList} />
-
-            <div className="mt-8 text-center">
-                <Link href="/return-product" className="bg-red-500 text-white p-2 rounded hover:bg-red-600">
-                    Go to Return Product Page
-                </Link>
-            </div>
-        </main>
-    );
+      {activeTab === 'list' && (
+        <div>
+          {/* Ensure ProductList is receiving the 'refresh' prop if it needs it */}
+          <ProductList refresh={productsUpdated} />
+        </div>
+      )}
+      {/* ... other components and UI ... */}
+    </div>
+  );
 }
