@@ -48,11 +48,7 @@ export default function Home() {
 
             <ProductList refresh={refreshList} />
 
-            <div className="mt-8 text-center">
-                <Link href="/return-product" className="bg-red-500 text-white p-2 rounded hover:bg-red-600">
-                    Go to Return Product Page
-                </Link>
-            </div>
+            
         </main>
     );
 }
