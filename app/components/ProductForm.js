@@ -1,7 +1,7 @@
 'use client';
 
 // src/components/ProductForm.js
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // <--- ADD useEffect HERE
 import { db } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp, getDocs, query, where, updateDoc, increment, arrayUnion } from 'firebase/firestore';
 
@@ -18,19 +18,29 @@ export default function ProductForm({ onProductAdded }) {
 
   useEffect(() => {
     const fetchExistingSerials = async () => {
-      const querySnapshot = await getDocs(collection(db, 'products'));
-      const allSerials = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data.serialNumbers && Array.isArray(data.serialNumbers)) {
-          allSerials.push(...data.serialNumbers);
-        }
-      });
-      setExistingSerialNumbers(allSerials);
+      try {
+        const querySnapshot = await getDocs(collection(db, 'products'));
+        const allSerials = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data.serialNumbers && Array.isArray(data.serialNumbers)) {
+            allSerials.push(...data.serialNumbers);
+          }
+        });
+        setExistingSerialNumbers(allSerials);
+      } catch (error) {
+        console.error('Error fetching existing serial numbers:', error);
+        setMessage(`Error fetching existing serials: ${error.message}`);
+      }
     };
 
     fetchExistingSerials();
   }, []);
+
+  useEffect(() => {
+    setQuantity(0); // Reset quantity when entry type or serials change
+    setMessage(''); // Clear previous messages
+  }, [serialNumbersType, manualSerialNumbers, startSerialNumber, endSerialNumber]);
 
   const handleSerialNumbersTypeChange = (e) => {
     setSerialNumbersType(e.target.value);
