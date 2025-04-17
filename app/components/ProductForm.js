@@ -1,234 +1,278 @@
-'use client';
-
-import { useState } from 'react';
+// src/components/ProductForm.js
+import { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
 
 export default function ProductForm({ onProductAdded }) {
   const [name, setName] = useState('');
-  const [serialNumberRanges, setSerialNumberRanges] = useState('');
+  const [serialNumbersType, setSerialNumbersType] = useState('manual'); // 'manual' or 'series'
+  const [manualSerialNumbers, setManualSerialNumbers] = useState('');
   const [startSerialNumber, setStartSerialNumber] = useState('');
   const [endSerialNumber, setEndSerialNumber] = useState('');
-  const [calculatedQuantity, setCalculatedQuantity] = useState(0);
-  const [message, setMessage] = useState('');
+  const [quantity, setQuantity] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [entryType, setEntryType] = useState('ranges'); // 'ranges' or 'series'
+  const [message, setMessage] = useState('');
+  const [existingSerialNumbers, setExistingSerialNumbers] = useState([]);
 
-  const parseRanges = (rangesString) => {
-    const serialNumbers = new Set();
-    const ranges = rangesString.split(',').map(r => r.trim()).filter(r => r !== '');
-
-    for (const range of ranges) {
-      if (range.includes('-')) {
-        const [startStr, endStr] = range.split('-').map(s => s.trim());
-        const start = parseInt(startStr, 10);
-        const end = parseInt(endStr, 10);
-
-        if (!isNaN(start) && !isNaN(end) && start <= end) {
-          for (let i = start; i <= end; i++) {
-            serialNumbers.add(i.toString().padStart(startStr.length, '0')); // Keep leading zeros
-          }
-        } else {
-          return { error: `Invalid range: ${range}` };
+  useEffect(() => {
+    const fetchExistingSerials = async () => {
+      const querySnapshot = await getDocs(collection(db, 'products'));
+      const allSerials = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.serialNumbers && Array.isArray(data.serialNumbers)) {
+          allSerials.push(...data.serialNumbers);
         }
-      } else {
-        const sn = range.trim();
-        if (sn) {
-          serialNumbers.add(sn);
-        }
-      }
-    }
-    return { serialNumbers: Array.from(serialNumbers) };
-  };
+      });
+      setExistingSerialNumbers(allSerials);
+    };
 
-  const handleSerialNumberRangesChange = (e) => {
-    const value = e.target.value;
-    setSerialNumberRanges(value);
+    fetchExistingSerials();
+  }, []);
+
+  const handleSerialNumbersTypeChange = (e) => {
+    setSerialNumbersType(e.target.value);
+    setManualSerialNumbers('');
     setStartSerialNumber('');
     setEndSerialNumber('');
-    setEntryType('ranges');
-    const parsed = parseRanges(value);
-    if (parsed.error) {
-      setMessage(parsed.error);
-      setCalculatedQuantity(0);
-    } else {
-      setMessage('');
-      setCalculatedQuantity(parsed.serialNumbers.length);
-    }
+    setQuantity(0);
+  };
+
+  const handleManualSerialNumbersChange = (e) => {
+    setManualSerialNumbers(e.target.value);
+    const snArray = e.target.value.split(',').map(sn => sn.trim()).filter(sn => sn !== '');
+    setQuantity([...new Set(snArray)].length);
   };
 
   const handleStartSerialNumberChange = (e) => {
     setStartSerialNumber(e.target.value);
-    setSerialNumberRanges('');
-    setEntryType('series');
-    updateCalculatedQuantity(e.target.value, endSerialNumber);
+    calculateQuantityFromSeries(e.target.value, endSerialNumber);
   };
 
   const handleEndSerialNumberChange = (e) => {
     setEndSerialNumber(e.target.value);
-    setSerialNumberRanges('');
-    setEntryType('series');
-    updateCalculatedQuantity(startSerialNumber, e.target.value);
+    calculateQuantityFromSeries(startSerialNumber, e.target.value);
   };
 
-  const updateCalculatedQuantity = (start, end) => {
-    const startNum = parseInt(start, 10);
-    const endNum = parseInt(end, 10);
-    if (!isNaN(startNum) && !isNaN(endNum) && endNum >= startNum) {
-      setCalculatedQuantity(endNum - startNum + 1);
-      setMessage('');
-    } else if (start !== '' || end !== '') {
-      setMessage('Invalid serial number series.');
-      setCalculatedQuantity(0);
+  const calculateQuantityFromSeries = (start, end) => {
+    if (start && end) {
+      const startNum = parseInt(start, 10);
+      const endNum = parseInt(end, 10);
+      if (!isNaN(startNum) && !isNaN(endNum) && endNum >= startNum) {
+        setQuantity(endNum - startNum + 1);
+      } else {
+        setQuantity(0);
+      }
     } else {
-      setCalculatedQuantity(0);
-      setMessage('');
+      setQuantity(0);
     }
   };
+
+  const isSerialNumberTaken = (serial) => existingSerialNumbers.includes(serial);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage('');
 
-    if (!name) {
-      setMessage('Please enter product name.');
-      setLoading(false);
-      return;
-    }
-
     let serialNumbersArray = [];
-    if (entryType === 'ranges') {
-      const parsed = parseRanges(serialNumberRanges);
-      if (parsed.error) {
-        setMessage(parsed.error);
-        setLoading(false);
-        return;
-      }
-      serialNumbersArray = parsed.serialNumbers;
-    } else if (entryType === 'series') {
+    if (serialNumbersType === 'manual') {
+      serialNumbersArray = manualSerialNumbers.split(',').map(sn => sn.trim()).filter(sn => sn !== '');
+    } else if (serialNumbersType === 'series' && startSerialNumber && endSerialNumber) {
       const startNum = parseInt(startSerialNumber, 10);
       const endNum = parseInt(endSerialNumber, 10);
       if (!isNaN(startNum) && !isNaN(endNum) && endNum >= startNum) {
         for (let i = startNum; i <= endNum; i++) {
           serialNumbersArray.push(i.toString());
         }
-      } else {
-        setMessage('Invalid serial number series.');
-        setLoading(false);
-        return;
       }
     }
 
-    if (serialNumbersArray.length === 0) {
-      setMessage('Please enter serial numbers or a valid series/range.');
+    const uniqueSerialNumbers = [...new Set(serialNumbersArray)];
+    const finalQuantity = serialNumbersType === 'series' ? quantity : uniqueSerialNumbers.length;
+
+    if (finalQuantity === 0 && serialNumbersType === 'series') {
+      setMessage('Error: Invalid serial number range.');
+      setLoading(false);
+      return;
+    }
+
+    const duplicateSerials = uniqueSerialNumbers.filter(isSerialNumberTaken);
+    if (duplicateSerials.length > 0) {
+      setMessage(`Error: Serial number(s) already exist: ${duplicateSerials.join(', ')}`);
       setLoading(false);
       return;
     }
 
     try {
       const productsRef = collection(db, 'products');
-      await addDoc(productsRef, {
-        name,
-        quantity: serialNumbersArray.length, // Quantity is the number of serial numbers
-        serialNumbers: serialNumbersArray,
-        createdAt: serverTimestamp(),
-      });
+      const existingProductQuery = query(productsRef, where('name', '==', name));
+      const existingProductSnapshot = await getDocs(existingProductQuery);
 
-      setMessage(`Product "${name}" with ${serialNumbersArray.length} units added successfully.`);
-      setName('');
-      setSerialNumberRanges('');
-      setStartSerialNumber('');
-      setEndSerialNumber('');
-      setCalculatedQuantity(0);
-      if (onProductAdded) {
-        onProductAdded();
+      if (!existingProductSnapshot.empty) {
+        const existingProductDoc = existingProductSnapshot.docs[0].ref;
+        // You might want to update the existing document instead of adding a new one
+        // await updateDoc(existingProductDoc, {
+        //   serialNumbers: arrayUnion(...uniqueSerialNumbers),
+        //   quantity: increment(finalQuantity),
+        //   updatedAt: serverTimestamp()
+        // });
+        setMessage('Warning: Product with this name already exists. Consider updating instead.');
+      } else {
+        await addDoc(productsRef, {
+          name,
+          serialNumbers: uniqueSerialNumbers,
+          quantity: finalQuantity,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+        setMessage('Product added successfully!');
+        if (onProductAdded) {
+          onProductAdded(); // Notify the parent component to refresh the list
+        }
+        setName('');
+        setManualSerialNumbers('');
+        setStartSerialNumber('');
+        setEndSerialNumber('');
+        setQuantity(0);
+        setSerialNumbersType('manual'); // Reset to default
       }
     } catch (error) {
       console.error('Error adding product:', error);
-      setMessage(`Failed to add product: ${error.message}`);
+      setMessage(`Error: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto p-4 rounded shadow mt-8 bg-white text-black">
-      <h2 className="text-xl font-semibold mb-4">Add New Product</h2>
+    <div
+      className="max-w-md mx-auto p-4 rounded shadow"
+      style={{ backgroundColor: 'white', color: 'black' }}
+    >
+      <h2 className="text-xl font-semibold mb-4" style={{ color: 'black' }}>
+        Add New Product
+      </h2>
+
       {message && (
-        <div className={`p-2 mb-4 rounded ${message.includes('Error') ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+        <div
+          className={`p-2 mb-4 rounded ${
+            message.includes('Error') ? 'bg-red-100 text-black' : 'bg-yellow-100 text-black' // Changed to yellow for warning
+          }`}
+        >
           {message}
         </div>
       )}
+
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
-          <label htmlFor="name" className="block text-sm font-medium mb-1">Product Name</label>
+          <label className="block text-sm font-medium mb-1" style={{ color: 'black' }}>
+            Product Name
+          </label>
           <input
             type="text"
-            id="name"
-            className="w-full p-2 border rounded"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            className="w-full p-2 border rounded text-black"
+            style={{ backgroundColor: 'white', color: 'black' }}
             required
           />
         </div>
 
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-1">Add Serial Numbers</label>
-          <div className="space-y-2">
-            <div>
-              <label htmlFor="serialNumberRanges" className="block text-sm font-medium mb-1">
-                As Ranges (comma-separated, e.g., SN001, 100-105)
-              </label>
-              <textarea
-                id="serialNumberRanges"
-                className="w-full p-2 border rounded"
-                value={serialNumberRanges}
-                onChange={handleSerialNumberRangesChange}
-                rows="2"
-                placeholder="SN001, 100-105, ABC01-ABC03"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                As Series (Start and End Number)
-              </label>
-              <div className="flex space-x-2">
-                <div className="w-1/2">
-                  <input
-                    type="text"
-                    className="w-full p-2 border rounded"
-                    placeholder="Start Number"
-                    value={startSerialNumber}
-                    onChange={handleStartSerialNumberChange}
-                  />
-                </div>
-                <div className="w-1/2">
-                  <input
-                    type="text"
-                    className="w-full p-2 border rounded"
-                    placeholder="End Number"
-                    value={endSerialNumber}
-                    onChange={handleEndSerialNumberChange}
-                  />
-                </div>
+          <label className="block text-sm font-medium mb-1" style={{ color: 'black' }}>
+            Serial Number Entry Type
+          </label>
+          <select
+            value={serialNumbersType}
+            onChange={handleSerialNumbersTypeChange}
+            className="w-full p-2 border rounded text-black"
+            style={{ backgroundColor: 'white', color: 'black' }}
+          >
+            <option value="manual">Manual Entry (comma-separated)</option>
+            <option value="series">Number Series (Start - End)</option>
+          </select>
+        </div>
+
+        {serialNumbersType === 'manual' && (
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1" style={{ color: 'black' }}>
+              Serial Numbers
+            </label>
+            <textarea
+              value={manualSerialNumbers}
+              onChange={handleManualSerialNumbersChange}
+              className="w-full p-2 border rounded text-black"
+              rows="4"
+              placeholder="SN001, SN002, SN003..."
+              style={{ backgroundColor: 'white', color: 'black' }}
+            />
+            {manualSerialNumbers && (
+              <p className="text-sm text-gray-500 mt-1" style={{ color: 'black' }}>
+                Detected {quantity} serial numbers
+              </p>
+            )}
+          </div>
+        )}
+
+        {serialNumbersType === 'series' && (
+          <div className="mb-4">
+            <div className="flex space-x-2">
+              <div className="w-1/2">
+                <label className="block text-sm font-medium mb-1" style={{ color: 'black' }}>
+                  Start Number
+                </label>
+                <input
+                  type="number"
+                  value={startSerialNumber}
+                  onChange={handleStartSerialNumberChange}
+                  className="w-full p-2 border rounded text-black"
+                  style={{ backgroundColor: 'white', color: 'black' }}
+                />
+              </div>
+              <div className="w-1/2">
+                <label className="block text-sm font-medium mb-1" style={{ color: 'black' }}>
+                  End Number
+                </label>
+                <input
+                  type="number"
+                  value={endSerialNumber}
+                  onChange={handleEndSerialNumberChange}
+                  className="w-full p-2 border rounded text-black"
+                  style={{ backgroundColor: 'white', color: 'black' }}
+                />
               </div>
             </div>
+            {startSerialNumber && endSerialNumber && quantity > 0 && (
+              <p className="text-sm text-green-500 mt-1" style={{ color: 'black' }}>
+                Quantity will be: {quantity}
+              </p>
+            )}
+            {startSerialNumber && endSerialNumber && quantity === 0 && (
+              <p className="text-sm text-red-500 mt-1" style={{ color: 'black' }}>
+                Invalid number series.
+              </p>
+            )}
           </div>
-          {calculatedQuantity > 0 && (
-            <p className="mt-2 text-sm text-gray-600">
-              Calculated Quantity: {calculatedQuantity}
-            </p>
-          )}
-          {message.includes('Invalid serial number series') && (
-            <p className="mt-2 text-sm text-red-600">{message}</p>
-          )}
+        )}
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-1" style={{ color: 'black' }}>
+            Quantity (Auto-calculated)
+          </label>
+          <input
+            type="number"
+            value={quantity}
+            className="w-full p-2 border rounded text-black bg-gray-100"
+            style={{ color: 'black' }}
+            readOnly
+          />
         </div>
 
         <button
           type="submit"
-          className="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600"
-          disabled={loading || calculatedQuantity === 0}
+          disabled={loading}
+          className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 disabled:bg-blue-300"
         >
           {loading ? 'Adding...' : 'Add Product'}
         </button>
