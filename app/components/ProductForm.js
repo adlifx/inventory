@@ -62,14 +62,12 @@ export default function ProductForm({ onProductAdded }) {
   };
 
   const calculateQuantityFromSeries = (start, end) => {
-    if (start && end) {
-      const startNum = parseInt(start, 10);
-      const endNum = parseInt(end, 10);
-      if (!isNaN(startNum) && !isNaN(endNum) && endNum >= startNum) {
-        setQuantity(endNum - startNum + 1);
-      } else {
-        setQuantity(0);
-      }
+    console.log('Start:', start, 'End:', end);
+    const startNum = parseInt(start, 10);
+    const endNum = parseInt(end, 10);
+    console.log('Parsed Start:', startNum, 'Parsed End:', endNum);
+    if (!isNaN(startNum) && !isNaN(endNum) && endNum >= startNum) {
+      setQuantity(endNum - startNum + 1);
     } else {
       setQuantity(0);
     }
