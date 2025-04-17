@@ -1,37 +1,50 @@
-// app/page.tsx (example - your actual file might look different)
+// app/page.tsx
 
 'use client';
 
 import { useState } from 'react';
-import ProductForm from './components/ProductForm'; // Adjust the import path if necessary
-import ProductList from './components/ProductList'; // Adjust the import path if necessary
+import ProductForm from './components/ProductForm';
+import ProductList from './components/ProductList';
 
 export default function HomePage() {
   const [productsUpdated, setProductsUpdated] = useState(false);
-  const [activeTab, setActiveTab] = useState<'add' | 'list'>('list'); // Assuming you have tabs
+  const [activeTab, setActiveTab] = useState<'add' | 'list'>('list');
 
   const handleProductAdded = () => {
-    setProductsUpdated(prev => !prev); // Toggle state to trigger re-render in ProductList
-    setActiveTab('list'); // Switch back to the list after adding
+    setProductsUpdated(prev => !prev);
+    setActiveTab('list');
   };
 
   return (
-    <div>
-      {/* ... other components and UI ... */}
+    <div className="p-4">
+      <h1 className="text-2xl font-semibold mb-4">Product Management</h1>
+
+      <div className="mb-4">
+        <button
+          onClick={() => setActiveTab('list')}
+          className={`mr-2 px-4 py-2 rounded ${activeTab === 'list' ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-700 hover:bg-gray-400'}`}
+        >
+          View Products
+        </button>
+        <button
+          onClick={() => setActiveTab('add')}
+          className={`px-4 py-2 rounded ${activeTab === 'add' ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-700 hover:bg-gray-400'}`}
+        >
+          Add Product
+        </button>
+      </div>
+
       {activeTab === 'add' && (
         <div className="mb-8">
-          {/* Change 'refresh' to 'onProductAdded' */}
           <ProductForm onProductAdded={handleProductAdded} />
         </div>
       )}
 
       {activeTab === 'list' && (
         <div>
-          {/* Ensure ProductList is receiving the 'refresh' prop if it needs it */}
           <ProductList refresh={productsUpdated} />
         </div>
       )}
-      {/* ... other components and UI ... */}
     </div>
   );
 }
