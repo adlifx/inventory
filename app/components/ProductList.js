@@ -1,8 +1,9 @@
 'use client'; // Add this line at the very top
-// src/components/ProductForm.js
+// src/components/ProductList.js
 import { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import Link from 'next/link';
 
 export default function ProductList({ refresh }) {
   const [products, setProducts] = useState([]);
@@ -94,7 +95,12 @@ export default function ProductList({ refresh }) {
 
   return (
     <div className="mt-8 text-white">
-      <h2 className="text-xl font-semibold mb-4">Product Inventory</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold">Product Inventory</h2>
+        <Link href="/return-product" className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+          Go to Return Product Page
+        </Link>
+      </div>
 
       <h3 className="text-lg font-semibold mb-2">Total Quantity by Product:</h3>
       <ul>
